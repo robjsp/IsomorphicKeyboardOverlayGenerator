@@ -5,10 +5,10 @@ import java.io.*;
 public class IsomorphicKeyboardGeneratorWithVariablesInOpenSCAD {
 Scanner scan = new Scanner(System.in);
 PrintWriter pw,pwKeyTop,pwValues,togetherPrint;
-double  octaveWidth, periodWidth, underKeyWidth, keyTravelDistance, baseHeight, whiteKeyLength, blackKeyLength, edgeRadius=1.5,//measurements 
+double  metalRoundRadius, octaveWidth, periodWidth, underKeyWidth, blackKeyHeight, whiteKeyLength, blackKeyLength, edgeRadius=1.5,//measurements 
         genh, overhead, keyTopSide1, keyTopSide2, shift,//derived stuff
         theta, q, r, a, b, c, d, z,//bunch of triangle stuff
-        generator, holeScale=0.5, stalkScale=0.48;//0.44 was too small once I rotated keybases in printing
+        generator, holeScaleX, holeScaleY, stalkScale = 0.48;// stalkScaleX, stalkScaleY;//0.44 was too small once I rotated keybases in printing
 int periodSteps, generatorSteps, desiredGamut, startingKey, range,//user decisions
     genForStep1, genForStep2;//derived
 boolean isKeytop;
@@ -23,7 +23,7 @@ boolean isKeytop;
     public void generateFiles(){
         int currentPianoKey, currentGenerator;
         //currentGenerator = 0;//initialize at 0 for now at least, could get user input
-        //boolean needFeet;//false by default//SHOULD I SET THIS  I DON'T REMEMBER
+        //boolean isWhiteKey;//false by default//SHOULD I SET THIS  I DON'T REMEMBER
         
         File together = new File("/home/john/Desktop/OPENSCAD_DUMP/together.scad");//together is the big collection of keys and keytops that will show if everything worked correctly
         System.out.println(together.getParentFile().mkdirs()+"<-------This is whether the makedirs succeeded or not");
@@ -56,23 +56,57 @@ boolean isKeytop;
                 togetherPrint.println("use<"+i+"_"+currentGenerator+".scad>;");
                 
                 togetherPrint.println("translate([-"+(i*octaveWidth/12)+",0,0");
-                if(needFeet(currentPianoKey)){
-                    togetherPrint.println("-baseHeight");
-                }
+                
                 togetherPrint.println("])");
-                togetherPrint.println("rotate([0,90,0])");
+                //togetherPrint.println("rotate([0,90,0])");
                 togetherPrint.println(i+"_"+currentGenerator+"(false/*because it's wrong for now*/);");
                 
                 pw.println("use<keytop.scad>");
                 pw.println("include<values.scad>");
-                pw.println("rotate([0,90,0])"+i+"_"+currentGenerator+"();");
+                pw.println(i+"_"+currentGenerator+"();");
                 pw.println("module " +i +"_"+currentGenerator+"(keytops=false){");
                 
                 createMainBase(currentGenerator,keytopsNeeded, i, currentPianoKey);
-                createKeyStalks(currentGenerator,needFeet(currentPianoKey));
-                //if(needFeet(currentPianoKey)){createFeet(currentGenerator, keytopsNeeded, currentPianoKey);}
                 
-                pw.println("}}");
+                createKeyStalks(currentGenerator, keytopsNeeded, currentPianoKey);
+                
+                pw.println("}");
+                
+                pw.println("//Thin Cuts:");
+                pw.println("translate([0,0,-1]){");
+                pw.println("linear_extrude(height=blackKeyHeight+"+metalRoundRadius+"+8+2)"); 
+                pw.println("polygon(points=[[0-1,20],[0-1,length+1],[underKeyWidth/3,length+1]]);");
+                pw.println("linear_extrude(height=blackKeyHeight+"+metalRoundRadius+"+8+2)"); 
+                pw.println("polygon(points=[[underKeyWidth+1,20],[underKeyWidth+1,length+1],[underKeyWidth/3*2,length+1]]);");
+                pw.println("\n}");
+                
+                pw.println("anglePoints=["
+                        + "[0-1-underKeyWidth/3,20,blackKeyHeight+"+metalRoundRadius+"+8+1],"
+                        + "[0-1,20,blackKeyHeight+"+metalRoundRadius+"+8+1],"
+                        + "[underKeyWidth/3,length+1,blackKeyHeight+"+metalRoundRadius+"+8+1],"
+                        + "[0-1,length+1,blackKeyHeight+"+metalRoundRadius+"+8+1],"
+                                
+                        + "[0-1-underKeyWidth/3-underKeyWidth/3,20,blackKeyHeight+"+metalRoundRadius+"+8+1+2*blackKeyHeight+(desiredGamut-"+currentGenerator+")],"
+                        + "[0-1-underKeyWidth/3,20,blackKeyHeight+"+metalRoundRadius+"+8+1+2*blackKeyHeight+(desiredGamut-"+currentGenerator+")],"
+                        + "[underKeyWidth/3-underKeyWidth/3,length+1,blackKeyHeight+"+metalRoundRadius+"+8+1+2*blackKeyHeight+(desiredGamut-"+currentGenerator+")],"
+                        + "[0-1-underKeyWidth/3,length+1,blackKeyHeight+"+metalRoundRadius+"+8+1+2*blackKeyHeight+(desiredGamut-"+currentGenerator+")]"
+                         
+                        + "];");
+                
+                pw.println("angleFaces=["
+                        + "[0,1,2,3],"
+                        + "[0,4,5,1],"
+                        + "[0,3,7,4],"
+                        + "[3,2,6,7],"
+                        + "[1,5,6,2],"
+                        + "[7,6,5,4]"
+                        + "];");
+                
+                pw.println("translate([0,0,-0.001])polyhedron(anglePoints,angleFaces);");
+                
+                pw.println("translate([underKeyWidth,0,-0.001])mirror([1,0,0])polyhedron(anglePoints,angleFaces);");
+                
+                pw.println("}\n}");
                 
                 pw.close();
             }catch(IOException e){
@@ -104,8 +138,8 @@ boolean isKeytop;
         pwKeyTop.println("keytopShape();");//make key
         
 
-        pwKeyTop.println("translate([(b+c)/4,(d+a)/4,-0.1])");
-        pwKeyTop.println("scale(holeScale,holeScale,holeScale)");
+        pwKeyTop.println("translate([1/2*(b+c)-(1/2*(b+c)*holeScaleX),1/2*(d+a)-(1/2*(d+a)*holeScaleY),-0.1])");
+        pwKeyTop.println("scale(holeScaleX,holeScaleY,0.5)");
         pwKeyTop.println("keytopShape();");
         
         pwKeyTop.println("edge(6,11,1,-1);");//edges rounded by subtracting module below
@@ -142,70 +176,45 @@ boolean isKeytop;
         }
     }
     
-    public void createFeet(int currentGenerator, int keytopsNeeded, int currentPianoKey){
-        
-        pw.println("//Feet:");
-        
-        double distance;
-        if(genh*(currentGenerator+(keytopsNeeded-1)*periodSteps)+overhead<whiteKeyLength){
-            distance = genh*(currentGenerator+(keytopsNeeded-1)*periodSteps)+overhead;//distance to front foot
-        }
-        else{
-            distance=whiteKeyLength;
-        }
-        pw.println("difference(){union(){translate([0,"+(distance-0.5*underKeyWidth)+","+(-keyTravelDistance)+"]){");//combine two feet, subtract slice of B,C,E,or F
-        pw.println("cube(["+underKeyWidth+","+(0.5*underKeyWidth)+","+keyTravelDistance+"],false);}");//1 foot
-        pw.println("translate([0,"+underKeyWidth+","+(-keyTravelDistance)+"]){");
-        pw.println("cube(["+underKeyWidth+","+(0.5*underKeyWidth)+","+keyTravelDistance+"],false);}}");//2 foot
-        if(currentPianoKey==2||currentPianoKey==7){//B or E
-            pw.println("rotate([0,"+(-Math.atan(0.5*underKeyWidth/keyTravelDistance)*180/Math.PI)+",0])");
-            pw.println("translate(["+(-keyTravelDistance*2)+","+0.5+","+(-keyTravelDistance*2)+"])");
-            pw.println("cube(["+(2*keyTravelDistance)+","+((genh*(currentGenerator+periodSteps*keytopsNeeded))+1)+","+(2*keyTravelDistance)+"]);");
-        }
-        if(currentPianoKey==3||currentPianoKey==8){//C or F
-            pw.println("translate(["+underKeyWidth+","+0.5+",0])");
-            pw.println("rotate([0,"+(Math.atan(0.5*underKeyWidth/keyTravelDistance)*180/Math.PI)+",0])");
-            pw.println("translate([0,0,"+(-keyTravelDistance*2)+"])");
-            pw.println("cube(["+(2*keyTravelDistance)+","+((genh*(currentGenerator+periodSteps*keytopsNeeded))+1)+","+(2*keyTravelDistance)+"]);");
-        }
-        pw.println("}");
-    }
-    
-    public boolean needFeet(int currentPianoKey){
+    public boolean isWhiteKey(int currentPianoKey){
     return  currentPianoKey==0||//0 is A, if key is a white key...
             currentPianoKey==2||
             currentPianoKey==3||
             currentPianoKey==5||
             currentPianoKey==7||
             currentPianoKey==8||
-            currentPianoKey==10; //then you need feet!
+            currentPianoKey==10;
     }
     
-    public void createKeyStalks(int currentGenerator, boolean needFeet){//fed in needFeet value because can't access currentPianoKey and I'm bad at programming
+    public void createKeyStalks(int currentGeneratorIn, int keytopsNeeded, int currentPianoKeyIn){
         pw.println("//Key Stalks:");
-        for(int j = currentGenerator; j<desiredGamut; j+=periodSteps){//j changes generator to enharmonically eqauivalent values by being increased by periodSteps until greater than gamut
-                    pw.println("translate([shift/4,(genh*"+j+"-(d+a)/2+overhead),1.5*baseHeight");
-                    pw.println("]){");//
-                    pw.println("linear_extrude(height=(keyTravelDistance*2+desiredGamut-"+j+"+0.5*baseHeight");
-                    if(!needFeet){
-                        pw.println("-baseHeight");
-                    }
+        for(int j = 0; j<keytopsNeeded; j++){//j changes generator to enharmonically eqauivalent values by being increasing by periodSteps until greater than gamut
                     
-                    pw.println(")){");
-                    pw.println("scale((stalkScale+holeScale)/2,stalkScale)");//THIS ACTUALLY MAKES IT NOT QUITE CENTER I THINK BUT I'M NOT WORRIED ABOUT IT for now
-                    //Also this scale logic won't work for sideways keys, or probably even some weirder tall keys. not worried about it for now?
-                    //IIRC, I averaged stalkscale and holeScale because the smaller of them is affected... less?
-                    pw.println("polygon(points=[");
-                    pw.println("[Points[0][0],Points[0][1]],[Points[1][0],Points[1][1]],[Points[2][0],Points[2][1]],[Points[3][0],Points[3][1]],[Points[4][0],Points[4][1]],[Points[5][0],Points[5][1]],[Points[6][0],Points[6][1]]");
-                    pw.println("]);");
-                    pw.println("}");
+            System.out.println("currentGeneratorIn*genh="+(currentGeneratorIn*genh));
+            if(isWhiteKey(currentPianoKeyIn)){
+                pw.println("translate([shift/4,genh*"+currentGeneratorIn+"+overhead,0.75*(blackKeyHeight+metalRoundRadius+sqrt(metalRoundRadius*metalRoundRadius*2)+4)]){");
+            }else{
+                pw.println("translate([shift/4,genh*"+currentGeneratorIn+"+overhead,blackKeyHeight+0.75*(metalRoundRadius+sqrt(metalRoundRadius*metalRoundRadius*2)+4)]){");
+            }
+            if(isWhiteKey(currentPianoKeyIn)){
+                pw.println("linear_extrude(height=(2*blackKeyHeight+(desiredGamut-"+currentGeneratorIn+")+0.25*(blackKeyHeight+metalRoundRadius+sqrt(metalRoundRadius*metalRoundRadius*2)+4))){");
+            }else{
+                pw.println("linear_extrude(height=(2*blackKeyHeight+(desiredGamut-"+currentGeneratorIn+")+0.25*(metalRoundRadius+sqrt(metalRoundRadius*metalRoundRadius*2)+4))){");
+            }
 
-                    pw.println("if(keytops)");
-                    pw.println("translate([0,(-0.5*(a+d)),(keyTravelDistance*1.5+desiredGamut-"+j+"+40)])");//+10 FOR VISIBILITY ONLY
-                    pw.println("keytop();");
-                    
-                    pw.println("}");
-                }
+            pw.println("scale(stalkScale,stalkScale)");
+            pw.println("polygon(points=[");
+            pw.println("[Points[0][0],Points[0][1]],[Points[1][0],Points[1][1]],[Points[2][0],Points[2][1]],[Points[3][0],Points[3][1]],[Points[4][0],Points[4][1]],[Points[5][0],Points[5][1]],[Points[6][0],Points[6][1]]");
+            pw.println("]);");
+            pw.println("}");
+
+            pw.println("if(keytops)");
+            pw.println("translate([0,(-0.5*(a+d)),(blackKeyHeight*1.5+desiredGamut-"+currentGeneratorIn+"+40)])");//+10 FOR VISIBILITY ONLY
+            pw.println("keytop();");
+
+            pw.println("}");
+            currentGeneratorIn+=periodSteps;
+        }
     }
     
     
@@ -214,18 +223,22 @@ boolean isKeytop;
                 pwValues.println("//Constants:");
                 pwValues.println("edgeRadius="+edgeRadius+";");
                 pwValues.println("underKeyWidth="+underKeyWidth+";");
-                pwValues.println("baseHeight="+baseHeight+";");
+                pwValues.println("blackKeyHeight="+blackKeyHeight+";");
                 pwValues.println("genh="+genh+";");
                 pwValues.println("a="+a+";");
                 pwValues.println("b="+b+";");
                 pwValues.println("c="+c+";");
                 pwValues.println("d="+d+";");
                 pwValues.println("overhead="+overhead+";");
-                pwValues.println("keyTravelDistance="+keyTravelDistance+";");
                 pwValues.println("desiredGamut="+desiredGamut+";");
                 pwValues.println("shift="+shift+";");
-                pwValues.println("holeScale="+holeScale+";");
+                //pwValues.prfintln("holeScale="+holeScale+";");//replaced by X and Y for now because already printed stalks
+                pwValues.println("holeScaleX="+holeScaleX+";");
+                pwValues.println("holeScaleY="+holeScaleY+";");
                 pwValues.println("stalkScale="+stalkScale+";");
+                pwValues.println("metalRoundRadius="+metalRoundRadius+";");
+                //pwValues.println("stalkScaleX="+stalkScaleX+";");
+                //pwValues.println("stalkScaleY="+stalkScaleY+";");
                 pwValues.println("");
                 
                 pwValues.println("Points = [");//points are derived from drawing, where shift widens the tips and squishes the middle to make it hexagonal
@@ -236,12 +249,12 @@ boolean isKeytop;
                 pwValues.println("[(c+shift),(a+d),0],//4");
                 pwValues.println("[(c-shift),(a+d),0],//5");
 
-                pwValues.println("[shift,a,keyTravelDistance],//6");
-                pwValues.println("[(b-shift),0,keyTravelDistance],//7");
-                pwValues.println("[(b+shift),0,keyTravelDistance],//8");
-                pwValues.println("[(b+c-shift),d,keyTravelDistance],//9");
-                pwValues.println("[(c+shift),(a+d),keyTravelDistance],//10");
-                pwValues.println("[(c-shift),(a+d),keyTravelDistance],//11");//each point of polygon (for keytop) in terms of triangle bullshit, offset by shift to make hexagons instead of parallelograms
+                pwValues.println("[shift,a,blackKeyHeight],//6");
+                pwValues.println("[(b-shift),0,blackKeyHeight],//7");
+                pwValues.println("[(b+shift),0,blackKeyHeight],//8");
+                pwValues.println("[(b+c-shift),d,blackKeyHeight],//9");
+                pwValues.println("[(c+shift),(a+d),blackKeyHeight],//10");
+                pwValues.println("[(c-shift),(a+d),blackKeyHeight],//11");//each point of polygon (for keytop) in terms of triangle bullshit, offset by shift to make hexagons instead of parallelograms
                 pwValues.println("];");
 
                 pwValues.println("Faces = [");
@@ -261,164 +274,108 @@ boolean isKeytop;
     
     public void createMainBase(int currentGenerator, int keytopsNeeded, int i, int currentPianoKey){
          double length;//length of main base
-                length = genh*(currentGenerator+(keytopsNeeded-1)*periodSteps)+overhead;
+                length = genh*(currentGenerator+(keytopsNeeded-1)*periodSteps)+overhead+stalkScale*(a+d);//-genh*currentGenerator%periodSteps;
+                System.out.println("length:"+length);
                 pw.println("length="+length+";");
-                
-                pw.println("rotate([0,-90,0]){");
+                pw.println("difference(){"
+                        + "\nunion(){");
+                pw.println("");
                 pw.println("//Main Base:");
-                //pw.println("difference(){");
-                if(length%baseHeight>0.5*baseHeight){
-                pw.println("translate([0,length-0.125*baseHeight,0.5*baseHeight])");
-                pw.println("cube([underKeyWidth,0.125*baseHeight,baseHeight]);");
-                }
+                
+                if(!isWhiteKey(currentPianoKey)){pw.println("translate([0,0,blackKeyHeight])");}
+                //raise up black key for easier combination in togetherPrint
+                
                 pw.println("difference(){");
                 pw.println("union(){");
+
+                if(isWhiteKey(currentPianoKey)){//first little chunk to hold the metal round, independent of the rest of the main base
+                    pw.println("cube([underKeyWidth,metalRoundRadius*2+4,blackKeyHeight+metalRoundRadius+sqrt(metalRoundRadius*metalRoundRadius*2)+4],false);");
+                }
+                else{
+                    pw.println("cube([underKeyWidth,metalRoundRadius*2+4,metalRoundRadius+sqrt(metalRoundRadius*metalRoundRadius*2)+4],false);");
                 
-              
-                //if(needFeet(currentPianoKey))
+                }
                 
-                   // pw.println("difference(){");
-                    pw.println("translate([0,0,baseHeight])");
-                    pw.println("cube([underKeyWidth,length,baseHeight],false);");
+                pw.println("translate([0,metalRoundRadius*2+4,0])");
                 
+                if(isWhiteKey(currentPianoKey)){//main base section, white key is 2x as tall to end up beside black key
+                    pw.println("cube([underKeyWidth,length-(metalRoundRadius*2+4),blackKeyHeight+metalRoundRadius+sqrt(metalRoundRadius*metalRoundRadius*2)+4],false);");
+                }
+                else{
+                    pw.println("cube([underKeyWidth,length-(metalRoundRadius*2+4),metalRoundRadius+sqrt(metalRoundRadius*metalRoundRadius*2)+4],false);");
                 
-                //pw.println("}");
+                }
                 
-                pw.println("cube([underKeyWidth,length,baseHeight],false);");//main base
                 pw.println("}");
-                if(needFeet(currentPianoKey)){
-                    pw.println("translate([0,baseHeight,0])\n" +
+                
+                if(isWhiteKey(currentPianoKey)){
+                    pw.println("translate([0,blackKeyHeight,0])\n" +
                                 "rotate([45,0,0])\n" +
                                 "translate([-25,-50,0])\n" +
                                 "cube([50,50,50]);");
                 }
+                
+                if(isWhiteKey(currentPianoKey)){
+                    pw.println("translate([-.1,metalRoundRadius+2,blackKeyHeight+metalRoundRadius+2])");
+                }
                 else{
-                    pw.println("translate([0,0,baseHeight])\n" +
-                                "rotate([-45,0,0])\n" +
-                                "translate([-25,-50,0])\n" +
-                                "cube([50,50,50]);");
+                    pw.println("translate([-.1,metalRoundRadius+2,metalRoundRadius+2])");
                 }
-                pw.println("translate([-.1,0.5*baseHeight,0.5*baseHeight-0.5*(3*(sqrt(2)-1))");
-                if(needFeet(currentPianoKey)){
-                    pw.println("+baseHeight");
-                }
-                pw.println("])"
-                        + "union(){"
-                        + "rotate([45,0,0])"
-                        + "translate([])"
-                        + "cube([underKeyWidth+0.2,3,3]);"
-                        + "rotate([0,90,0])");
+                
+                pw.println( "union(){"
+                            + "rotate([45,0,0])"
+                            + "cube([underKeyWidth+0.2,metalRoundRadius+0.5,metalRoundRadius+0.5]);"
+                            + "rotate([0,90,0])");
                 //cylinder transform and rotate for metal round, 0.1 to make the extra 0.2 stick out and not be flush with base
-                pw.println("cylinder((underKeyWidth+.2),r=3, true);}");//cylinder for metal round
-                if(needFeet(currentPianoKey)){
-                    pw.println("");
+                pw.println("cylinder((underKeyWidth+.2),r=metalRoundRadius+0.5, true);}");//cylinder for metal round
+                
+                if(isWhiteKey(currentPianoKey)){
+                    pw.println("translate([underKeyWidth/10,1.49,0.125*blackKeyHeight+blackKeyHeight])");
                 }
-                pw.println("translate([underKeyWidth/10,1.49,0.125*baseHeight");
-                if(needFeet(currentPianoKey)){
-                    pw.println("+baseHeight");
+                else{
+                    pw.println("translate([underKeyWidth/10,1.49,0.125*(metalRoundRadius*2+8)])");//+8 because of 4 around hole I think I dunno who cares
                 }
-                pw.println("])");
+                
                 pw.println("rotate([90,0,0])");
-                pw.println("linear_extrude(height=1.5){");
-                pw.println("text(\""+i+"\",size=baseHeight*0.75);");
+                pw.println("linear_extrude(height=1.5){"); 
+                pw.println("text(\""+i+"\",size=(metalRoundRadius*2+4)*0.75);");
                 pw.println("}");
-                pw.println("");
+
+                pw.println("//Warp Cuts:");
                 
-
-                pw.println("//Warp Cuts:");//This uses some stupid terrible awful logic to get the pattern I wanted. It works.
-                    
-                    int evenOdd = 0;
-                    for(double soFar = 0; soFar < length-1.5*baseHeight; soFar += 0.5*baseHeight){
-
-                            
-                            pw.println("translate([-1");
-
-                            pw.println(","+soFar+"+baseHeight+1");
-                            pw.println(",0.5*baseHeight");
-                            if(evenOdd%2==0)pw.println("-");
-                            pw.println("-0.01");
-                            pw.println("])");
-                            if(evenOdd%2==0)pw.println("mirror([1,0,0])");
-                            pw.println("rotate([0,");
-                            if(evenOdd%2==0)pw.println("-");
-                            pw.println("90,0])");
-                            pw.println("linear_extrude(height=underKeyWidth+2)");
-                            pw.println("polygon(points=[[0.5*baseHeight,0],[0.5*baseHeight,0.5*baseHeight");
-                            if(evenOdd%2==1 && soFar+0.5*baseHeight>= length-1.5*baseHeight){
-                                pw.println("*4");
-                            }    
-                            pw.println("],[0");
-                            if(evenOdd%2==1 && soFar+0.5*baseHeight>= length-1.5*baseHeight){
-                                pw.println("-baseHeight");
-                            }        
-                            pw.println(",0.5*0.5*baseHeight");
-                            if(evenOdd%2==1 && soFar+0.5*baseHeight>= length-1.5*baseHeight){
-                                pw.println("*4");
-                            }        
-                            pw.println("]]);");
-                            if(evenOdd%2==0 && soFar+0.5*baseHeight>= length-1.5*baseHeight){
-                                evenOdd++;
-                                soFar+=0.5*baseHeight;
-                                pw.println("translate([-1");
-
-                                pw.println(","+soFar+"+baseHeight+1");
-                                pw.println(",0.5*baseHeight");
-                                if(evenOdd%2==0)pw.println("-");
-                                pw.println("-0.01");
-                                pw.println("])");
-                                if(evenOdd%2==0)pw.println("mirror([1,0,0])");
-                                pw.println("rotate([0,");
-                                if(evenOdd%2==0)pw.println("-");
-                                pw.println("90,0])");
-                                pw.println("linear_extrude(height=underKeyWidth+2)");
-                                pw.println("polygon(points=[[0.5*baseHeight,0],[0.5*baseHeight,2*baseHeight");
-                               
-                                pw.println("],[-baseHeight");
-                                    
-                                pw.println(",baseHeight");
-                                     
-                                pw.println("]]);");
-                            }  
-
-                        evenOdd++;
-                    }
-                    
-                    int evenOdd2 = 0;
-                    for(double soFar = 0; soFar < length-1.5*baseHeight; soFar += 0.5*baseHeight){
-
-                            
-                            pw.println("translate([-1");
-
-                            pw.println(","+soFar+"+baseHeight+1");
-                            //if(evenOdd2%2==0 && soFar+2*baseHeight>length)pw.println("-0.25*baseHeight");
-                            pw.println(",1.5*baseHeight");
-                            if(evenOdd2%2==1)pw.println("-");
-                            pw.println("-0.01");
-                           // if(evenOdd2%2==0 && soFar+2*baseHeight>length)pw.println("-0.25*baseHeight");
-                            pw.println("])");
-                            if(evenOdd2%2==1)pw.println("mirror([1,0,0])");
-                            pw.println("rotate([0,");
-                            if(evenOdd2%2==1)pw.println("-");
-                            pw.println("90,0])");
-                            pw.println("linear_extrude(height=underKeyWidth+2)");
-                            pw.println("polygon(points=[[0.5*baseHeight,0],[0.5*baseHeight,0.5*baseHeight");
-                            
-                            pw.println("],[0");
-                              
-                            pw.println(",0.5*0.5*baseHeight");
-                                 
-                            pw.println("]]);");
-
-                        evenOdd2++;
-                    }
+                if(isWhiteKey(currentPianoKey)){
+                    warpCuts(blackKeyHeight+metalRoundRadius+Math.pow(metalRoundRadius*metalRoundRadius*2,0.5)+4, length,1,true);
+                    warpCuts(blackKeyHeight+metalRoundRadius+Math.pow(metalRoundRadius*metalRoundRadius*2,0.5)+4, length,2,true);
+                    warpCuts(blackKeyHeight+metalRoundRadius+Math.pow(metalRoundRadius*metalRoundRadius*2,0.5)+4, length,3,true);
+                }
+                else{
+                    warpCuts(metalRoundRadius+Math.pow(metalRoundRadius*metalRoundRadius*2,0.5)+4, length,1,false);
+                    warpCuts(metalRoundRadius+Math.pow(metalRoundRadius*metalRoundRadius*2,0.5)+4, length,2,false);
+                    warpCuts(metalRoundRadius+Math.pow(metalRoundRadius*metalRoundRadius*2,0.5)+4, length,3,false);
+                }
                 
-                //!!!!!!!!!!!!!!!!!!
                 pw.println("}");
                 
-                System.out.println("");
+                
     }
     
-
+    public void warpCuts(double warpHeight, double length, int row, boolean whiteKey){
+        pw.println("warpHeight="+warpHeight+";");
+        double extraForRowOne=0;
+        if(row==1&&whiteKey){
+            extraForRowOne=blackKeyHeight;
+        }
+        
+        for(double soFar=0; soFar<length-(metalRoundRadius*2+4)-0.25*warpHeight-extraForRowOne; soFar+=warpHeight){
+            if(row==2){
+                pw.println("translate([0,0.5*warpHeight,0])");
+            }
+            pw.println("translate([-1,length-"+soFar+","+row+"*warpHeight*0.5-warpHeight*0.25])");
+            pw.println("rotate([0,90,0])");
+            pw.println("linear_extrude(height=underKeyWidth+2)");
+            pw.println("polygon(points=[[0,0],[0.25*warpHeight,0.25*warpHeight],[0.5*warpHeight,0],[0.25*warpHeight,-0.25*warpHeight]]);");
+        }
+    }
     
     public void getUserInputAndDeriveConstants(){
         
@@ -437,22 +394,23 @@ boolean isKeytop;
          range = 12;//scan.nextInt();
          
          System.out.println("Starting Piano Key (0-11, A=0,Bb=1,etc.):");
-         startingKey = 0;//scan.nextInt();
+         startingKey = 5;//scan.nextInt();
          
          System.out.println("Octave Width:");
          octaveWidth = 165;//scan.nextDouble();
          
+         System.out.println("Metal Round Radius:");
+         metalRoundRadius = 2.5;//scan.nextDouble();
+         
          periodWidth = octaveWidth/12*periodSteps;
          
-         underKeyWidth=octaveWidth/12.0-0.15;//-0.15 mm for fit, 0.1 was too little 10/21/2018
+         underKeyWidth=octaveWidth/12.0-0.375;//0.5 was pretty good, trying 0.375//after thinning tips of keys I can widen these up a little bit//-0.15 mm for fit, 0.1 was too little 10/21/2018//0.25mm 25th Jan 2019//0.5 then 0.75//0.75 works, previous octaves need difference to 0.75 greater than .75
          
          System.out.println("Key Travel Distance:");
-         keyTravelDistance = 13;//scan.nextDouble();
-         
-         baseHeight = 13*0.75;//13 was keyTravel Distance but it's really more about fitting the 3/16" metal round that being a percentage of the keyTravelDistance
+         blackKeyHeight = 12;//scan.nextDouble();
          
          System.out.println("White Key Length:");
-         whiteKeyLength = 139;//scan.nextDouble();
+         whiteKeyLength = 120;//scan.nextDouble();139
          
          genh=whiteKeyLength/desiredGamut;
          
@@ -488,6 +446,13 @@ boolean isKeytop;
          a=(d*genForStep1/genForStep2);//was Math.cos(0.5*Math.PI-theta)*keyTopSide1;
          //needed to only use one side (keyTopSide2) in derivation either because i made an assumption and can't use both derivations, or maybe a mistake with one side
          
+         
+         //Great for later but shit I need to change the keytop hole size not the stalk size xO
+         //stalkScaleX=((b+c)*holeScale-1.5)/(b+c);
+         //stalkScaleY=((a+d)*holeScale-1.5)/(a+d);
+         holeScaleX=((b+c)*stalkScale+1.25)/(b+c);
+         holeScaleY=((a+d)*stalkScale+1.25)/(a+d);
+                 
          System.out.println("a:"+a+" b:"+b+" c:"+c+" d:"+d);//Maybe assumming something is bigger than something else like... dunno
          
          System.out.println(genForStep1);
@@ -498,7 +463,7 @@ boolean isKeytop;
          System.out.println((double)d/(double)a);//Should the ratio between a and d be the same as the ratio between gFS1 and gFS2???:??????
          //should b and c be equal?
          
-         overhead=a+d;
+         overhead=metalRoundRadius*2+4+(a+d)*stalkScale*0.5;
          
          shift=(((b+c)/2-Math.abs(b-c))/2)/2;
     }
@@ -541,44 +506,165 @@ boolean isKeytop;
 /*
     public void warpWedges(int currentGenerator){
         
-        pw.println("translate([-0.01,36,baseHeight+0.01])");
+        pw.println("translate([-0.01,36,blackKeyHeight+0.01])");
         pw.println("rotate([-90,0,-90])");
         pw.println("linear_extrude(height=underKeyWidth+0.02)");
         pw.println("polygon(points=[");
-        pw.println("[0,0],[baseHeight/"+Math.tan(0.25*Math.PI)+",0],[0.5*baseHeight/"+Math.tan(0.25*Math.PI)+",0.5*baseHeight]]);");
+        pw.println("[0,0],[blackKeyHeight/"+Math.tan(0.25*Math.PI)+",0],[0.5*blackKeyHeight/"+Math.tan(0.25*Math.PI)+",0.5*blackKeyHeight]]);");
         pw.println("");
         
         pw.println("translate([-0.01,42,-0.01])");
         pw.println("rotate([90,0,90])");
         pw.println("linear_extrude(height=underKeyWidth+0.02)");
         pw.println("polygon(points=[");
-        pw.println("[0,0],[baseHeight/"+Math.tan(0.25*Math.PI)+",0],[0.5*baseHeight/"+Math.tan(0.25*Math.PI)+",0.5*baseHeight]]);");
+        pw.println("[0,0],[blackKeyHeight/"+Math.tan(0.25*Math.PI)+",0],[0.5*blackKeyHeight/"+Math.tan(0.25*Math.PI)+",0.5*blackKeyHeight]]);");
         pw.println("");
         
         for(int j = currentGenerator; j<desiredGamut; j+=periodSteps){//j changes generator to enharmonically eqauivalent values by being increased by periodSteps until greater than gamut
-            pw.println("translate([-0.01,(genh*"+j+"-(d+a)/2+overhead),baseHeight+0.01])");
+            pw.println("translate([-0.01,(genh*"+j+"-(d+a)/2+overhead),blackKeyHeight+0.01])");
             pw.println("rotate([-90,0,-90])");
             pw.println("linear_extrude(height=underKeyWidth+0.02)");
             pw.println("polygon(points=[");
-            pw.println("[0,0],[baseHeight/"+Math.tan(0.25*Math.PI)+",0],[0.5*baseHeight/"+Math.tan(0.25*Math.PI)+",0.5*baseHeight]]);");
+            pw.println("[0,0],[blackKeyHeight/"+Math.tan(0.25*Math.PI)+",0],[0.5*blackKeyHeight/"+Math.tan(0.25*Math.PI)+",0.5*blackKeyHeight]]);");
             pw.println("");
 
-            pw.println("translate([-0.01,(genh*"+j+"+0.5*(a+d)+baseHeight),-0.01])");
+            pw.println("translate([-0.01,(genh*"+j+"+0.5*(a+d)+blackKeyHeight),-0.01])");
             pw.println("rotate([90,0,90])");
             pw.println("linear_extrude(height=underKeyWidth+0.02)");
             pw.println("polygon(points=[");
-            pw.println("[0,0],[baseHeight/"+Math.tan(0.25*Math.PI)+",0],[0.5*baseHeight/"+Math.tan(0.25*Math.PI)+",0.5*baseHeight]]);");
+            pw.println("[0,0],[blackKeyHeight/"+Math.tan(0.25*Math.PI)+",0],[0.5*blackKeyHeight/"+Math.tan(0.25*Math.PI)+",0.5*blackKeyHeight]]);");
             pw.println("");
         }
     }
 
 
-if(!needFeet(currentPianoKey)){
-                        for(double soFar = 0; soFar < length-25-baseHeight; soFar += baseHeight+2){
-                            pw.println("translate([-1,"+soFar+"+25,1/3*baseHeight-3])");
+if(!isWhiteKey(currentPianoKey)){
+                        for(double soFar = 0; soFar < length-25-blackKeyHeight; soFar += blackKeyHeight+2){
+                            pw.println("translate([-1,"+soFar+"+25,1/3*blackKeyHeight-3])");
                             pw.println("rotate([0,90,0])");
                             pw.println("linear_extrude(height=underKeyWidth+2)");
-                            pw.println("polygon(points=[[0.5*baseHeight-1,0],[baseHeight-2,0.5*baseHeight-1],[0.5*baseHeight-1,baseHeight-2],[0,0.5*baseHeight-1]]);");
+                            pw.println("polygon(points=[[0.5*blackKeyHeight-1,0],[blackKeyHeight-2,0.5*blackKeyHeight-1],[0.5*blackKeyHeight-1,blackKeyHeight-2],[0,0.5*blackKeyHeight-1]]);");
                         }
                     }
+
+
+int evenOdd = 0;
+                    for(double soFar = 0; soFar < length-1.5*blackKeyHeight; soFar += 0.5*blackKeyHeight){
+
+                            
+                            pw.println("translate([-1");
+
+                            pw.println(","+soFar+"+blackKeyHeight+1");
+                            pw.println(",0.5*blackKeyHeight");
+                            if(evenOdd%2==0)pw.println("-");
+                            pw.println("-0.01");
+                            pw.println("])");
+                            if(evenOdd%2==0)pw.println("mirror([1,0,0])");
+                            pw.println("rotate([0,");
+                            if(evenOdd%2==0)pw.println("-");
+                            pw.println("90,0])");
+                            pw.println("linear_extrude(height=underKeyWidth+2)");
+                            pw.println("polygon(points=[[0.5*blackKeyHeight,0],[0.5*blackKeyHeight,0.5*blackKeyHeight");
+                            if(evenOdd%2==1 && soFar+0.5*blackKeyHeight>= length-1.5*blackKeyHeight){
+                                pw.println("*4");
+                            }    
+                            pw.println("],[0");
+                            if(evenOdd%2==1 && soFar+0.5*blackKeyHeight>= length-1.5*blackKeyHeight){
+                                pw.println("-blackKeyHeight");
+                            }        
+                            pw.println(",0.5*0.5*blackKeyHeight");
+                            if(evenOdd%2==1 && soFar+0.5*blackKeyHeight>= length-1.5*blackKeyHeight){
+                                pw.println("*4");
+                            }        
+                            pw.println("]]);");
+                            if(evenOdd%2==0 && soFar+0.5*blackKeyHeight>= length-1.5*blackKeyHeight){
+                                evenOdd++;
+                                soFar+=0.5*blackKeyHeight;
+                                pw.println("translate([-1");
+
+                                pw.println(","+soFar+"+blackKeyHeight+1");
+                                pw.println(",0.5*blackKeyHeight");
+                                if(evenOdd%2==0)pw.println("-");
+                                pw.println("-0.01");
+                                pw.println("])");
+                                if(evenOdd%2==0)pw.println("mirror([1,0,0])");
+                                pw.println("rotate([0,");
+                                if(evenOdd%2==0)pw.println("-");
+                                pw.println("90,0])");
+                                pw.println("linear_extrude(height=underKeyWidth+2)");
+                                pw.println("polygon(points=[[0.5*blackKeyHeight,0],[0.5*blackKeyHeight,2*blackKeyHeight");
+                               
+                                pw.println("],[-blackKeyHeight");
+                                    
+                                pw.println(",blackKeyHeight");
+                                     
+                                pw.println("]]);");
+                            }  
+
+                        evenOdd++;
+                    }
+                    
+                    int evenOdd2 = 0;
+                    for(double soFar = 0; soFar < length-1.5*blackKeyHeight; soFar += 0.5*blackKeyHeight){
+
+                            
+                            pw.println("translate([-1");
+
+                            pw.println(","+soFar+"+blackKeyHeight+1");
+                            //if(evenOdd2%2==0 && soFar+2*blackKeyHeight>length)pw.println("-0.25*blackKeyHeight");
+                            pw.println(",1.5*blackKeyHeight");
+                            if(evenOdd2%2==1)pw.println("-");
+                            pw.println("-0.01");
+                           // if(evenOdd2%2==0 && soFar+2*blackKeyHeight>length)pw.println("-0.25*blackKeyHeight");
+                            pw.println("])");
+                            if(evenOdd2%2==1)pw.println("mirror([1,0,0])");
+                            pw.println("rotate([0,");
+                            if(evenOdd2%2==1)pw.println("-");
+                            pw.println("90,0])");
+                            pw.println("#linear_extrude(height=underKeyWidth+2)");
+                            pw.println("polygon(points=[[0.5*blackKeyHeight,0],[0.5*blackKeyHeight,0.5*blackKeyHeight");
+                            
+                            pw.println("],[0");
+                              
+                            pw.println(",0.5*0.5*blackKeyHeight");
+                                 
+                            pw.println("]]);");
+
+                        evenOdd2++;
+                    }
+
+
+if(length%blackKeyHeight>0.5*blackKeyHeight){
+pw.println("translate([0,length-0.125*blackKeyHeight,0.5*blackKeyHeight])");
+pw.println("#cube([underKeyWidth,0.125*blackKeyHeight,blackKeyHeight]);");
+}
+
+public void createFeet(int currentGenerator, int keytopsNeeded, int currentPianoKey){
+        
+        pw.println("//Feet:");
+        
+        double distance;
+        if(genh*(currentGenerator+(keytopsNeeded-1)*periodSteps)+overhead<whiteKeyLength){
+            distance = genh*(currentGenerator+(keytopsNeeded-1)*periodSteps)+overhead;//distance to front foot
+        }
+        else{
+            distance=whiteKeyLength;
+        }
+        pw.println("difference(){union(){translate([0,"+(distance-0.5*underKeyWidth)+","+(-blackKeyHeight)+"]){");//combine two feet, subtract slice of B,C,E,or F
+        pw.println("cube(["+underKeyWidth+","+(0.5*underKeyWidth)+","+blackKeyHeight+"],false);}");//1 foot
+        pw.println("translate([0,"+underKeyWidth+","+(-blackKeyHeight)+"]){");
+        pw.println("cube(["+underKeyWidth+","+(0.5*underKeyWidth)+","+blackKeyHeight+"],false);}}");//2 foot
+        if(currentPianoKey==2||currentPianoKey==7){//B or E
+            pw.println("rotate([0,"+(-Math.atan(0.5*underKeyWidth/blackKeyHeight)*180/Math.PI)+",0])");
+            pw.println("translate(["+(-blackKeyHeight*2)+","+0.5+","+(-blackKeyHeight*2)+"])");
+            pw.println("cube(["+(2*blackKeyHeight)+","+((genh*(currentGenerator+periodSteps*keytopsNeeded))+1)+","+(2*blackKeyHeight)+"]);");
+        }
+        if(currentPianoKey==3||currentPianoKey==8){//C or F
+            pw.println("translate(["+underKeyWidth+","+0.5+",0])");
+            pw.println("rotate([0,"+(Math.atan(0.5*underKeyWidth/blackKeyHeight)*180/Math.PI)+",0])");
+            pw.println("translate([0,0,"+(-blackKeyHeight*2)+"])");
+            pw.println("cube(["+(2*blackKeyHeight)+","+((genh*(currentGenerator+periodSteps*keytopsNeeded))+1)+","+(2*blackKeyHeight)+"]);");
+        }
+        pw.println("}");
+    }
 */
