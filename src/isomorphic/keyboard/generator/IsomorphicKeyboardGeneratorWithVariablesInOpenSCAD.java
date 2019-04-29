@@ -75,21 +75,21 @@ boolean isKeytop;
                 pw.println("//Thin Cuts:");
                 pw.println("translate([0,0,-1]){");
                 pw.println("linear_extrude(height=blackKeyHeight+"+metalRoundRadius+"+8+2)"); 
-                pw.println("polygon(points=[[0-1,20],[0-1,length+1],[underKeyWidth/3,length+1]]);");
+                pw.println("polygon(points=[[-0.1,10],[-0.1,length+0.1],[underKeyWidth/3,length+0.1]]);");
                 pw.println("linear_extrude(height=blackKeyHeight+"+metalRoundRadius+"+8+2)"); 
-                pw.println("polygon(points=[[underKeyWidth+1,20],[underKeyWidth+1,length+1],[underKeyWidth/3*2,length+1]]);");
+                pw.println("polygon(points=[[underKeyWidth+0.1,10],[underKeyWidth+0.1,length+0.1],[underKeyWidth/3*2,length+0.1]]);");
                 pw.println("\n}");
                 
                 pw.println("anglePoints=["
-                        + "[0-1-underKeyWidth/3,20,blackKeyHeight+"+metalRoundRadius+"+8+1],"
-                        + "[0-1,20,blackKeyHeight+"+metalRoundRadius+"+8+1],"
-                        + "[underKeyWidth/3,length+1,blackKeyHeight+"+metalRoundRadius+"+8+1],"
-                        + "[0-1,length+1,blackKeyHeight+"+metalRoundRadius+"+8+1],"
+                        + "[-underKeyWidth/3,10,blackKeyHeight+"+metalRoundRadius+"+8+1],"
+                        + "[0,10,blackKeyHeight+"+metalRoundRadius+"+8+1],"
+                        + "[underKeyWidth/3,length+0.1,blackKeyHeight+"+metalRoundRadius+"+8+1],"
+                        + "[0,length+0.1,blackKeyHeight+"+metalRoundRadius+"+8+1],"
                                 
-                        + "[0-1-underKeyWidth/3-underKeyWidth/3,20,blackKeyHeight+"+metalRoundRadius+"+8+1+2*blackKeyHeight+(desiredGamut-"+currentGenerator+")],"
-                        + "[0-1-underKeyWidth/3,20,blackKeyHeight+"+metalRoundRadius+"+8+1+2*blackKeyHeight+(desiredGamut-"+currentGenerator+")],"
-                        + "[underKeyWidth/3-underKeyWidth/3,length+1,blackKeyHeight+"+metalRoundRadius+"+8+1+2*blackKeyHeight+(desiredGamut-"+currentGenerator+")],"
-                        + "[0-1-underKeyWidth/3,length+1,blackKeyHeight+"+metalRoundRadius+"+8+1+2*blackKeyHeight+(desiredGamut-"+currentGenerator+")]"
+                        + "[0-underKeyWidth/3-underKeyWidth/3,10,blackKeyHeight+"+metalRoundRadius+"+8+1+2*blackKeyHeight+(desiredGamut-"+currentGenerator+")],"
+                        + "[0-underKeyWidth/3,10,blackKeyHeight+"+metalRoundRadius+"+8+1+2*blackKeyHeight+(desiredGamut-"+currentGenerator+")],"
+                        + "[underKeyWidth/3-underKeyWidth/3,length+0.1,blackKeyHeight+"+metalRoundRadius+"+8+1+2*blackKeyHeight+(desiredGamut-"+currentGenerator+")],"
+                        + "[0-underKeyWidth/3,length+0.1,blackKeyHeight+"+metalRoundRadius+"+8+1+2*blackKeyHeight+(desiredGamut-"+currentGenerator+")]"
                          
                         + "];");
                 
@@ -308,7 +308,7 @@ boolean isKeytop;
                 
                 pw.println("}");
                 
-                if(isWhiteKey(currentPianoKey)){
+                if(isWhiteKey(currentPianoKey)){//THIS IS STUPID, SHOULD REWRITE 
                     pw.println("translate([0,blackKeyHeight,0])\n" +
                                 "rotate([45,0,0])\n" +
                                 "translate([-25,-50,0])\n" +
@@ -404,7 +404,7 @@ boolean isKeytop;
          
          periodWidth = octaveWidth/12*periodSteps;
          
-         underKeyWidth=octaveWidth/12.0-0.375;//0.5 was pretty good, trying 0.375//after thinning tips of keys I can widen these up a little bit//-0.15 mm for fit, 0.1 was too little 10/21/2018//0.25mm 25th Jan 2019//0.5 then 0.75//0.75 works, previous octaves need difference to 0.75 greater than .75
+         underKeyWidth=octaveWidth/12.0-0.4375;//0.5 was pretty good, trying 0.375 TOO BIG TRYING 0.4375//after thinning tips of keys I can widen these up a little bit//-0.15 mm for fit, 0.1 was too little 10/21/2018//0.25mm 25th Jan 2019//0.5 then 0.75//0.75 works, previous octaves need difference to 0.75 greater than .75
          
          System.out.println("Key Travel Distance:");
          blackKeyHeight = 12;//scan.nextDouble();
