@@ -45,8 +45,6 @@ boolean isKeytop;
             currentGenerator=(i*genForStep1)%periodSteps;//find generator of current step, starts at zero?//TRIED THIS COME BACK HERE IF NOT GOODDawfawefawefawefawea
             //modulo periodSteps because they share the same topside of the key and I want to start at the lowest one so that I include it, because I only move upwards later one, I think
             int keytopsNeeded = (desiredGamut-currentGenerator-1)/periodSteps+1;//-1 then plus one because if desiredGamut-currentGenerator)=periodSteps, I want it to return 1? 
-            System.out.println("currentGenerator:"+currentGenerator);
-            System.out.println("keytopsNeeded:"+keytopsNeeded);
             
             try{
                 File file2 = new File("/home/john/Desktop/OPENSCAD_DUMP/"+i+"_"+currentGenerator+".scad");
@@ -59,7 +57,7 @@ boolean isKeytop;
                 
                 togetherPrint.println("])");
                 //togetherPrint.println("rotate([0,90,0])");
-                togetherPrint.println(i+"_"+currentGenerator+"(false/*because it's wrong for now*/);");
+                togetherPrint.println(i+"_"+currentGenerator+"(true/*because it's wrong for now*/);");
                 
                 pw.println("use<keytop.scad>");
                 pw.println("include<values.scad>");
@@ -72,7 +70,19 @@ boolean isKeytop;
                 
                 pw.println("}");
                 
-                pw.println("//Thin Cuts:");
+                thinCuts(currentGenerator);
+                
+                pw.close();
+            }catch(IOException e){
+            System.out.println(e);
+            }
+        }
+        createKeytop();//after crazy for loop for bases, make keytops file ONCE OH YEAH ONCE
+        togetherPrint.close();
+    }
+    
+    public void thinCuts(int currentGenerator){
+        pw.println("//Thin Cuts:");
                 pw.println("translate([0,0,-1]){");
                 pw.println("linear_extrude(height=blackKeyHeight+"+metalRoundRadius+"+8+2)"); 
                 pw.println("polygon(points=[[-0.1,10],[-0.1,length+0.1],[underKeyWidth/3,length+0.1]]);");
@@ -107,14 +117,6 @@ boolean isKeytop;
                 pw.println("translate([underKeyWidth,0,-0.001])mirror([1,0,0])polyhedron(anglePoints,angleFaces);");
                 
                 pw.println("}\n}");
-                
-                pw.close();
-            }catch(IOException e){
-            System.out.println(e);
-            }
-        }
-        createKeytop();//after crazy for loop for bases, make keytops file ONCE OH YEAH ONCE
-        togetherPrint.close();
     }
     
     public void createKeytop(){
@@ -190,7 +192,7 @@ boolean isKeytop;
         pw.println("//Key Stalks:");
         for(int j = 0; j<keytopsNeeded; j++){//j changes generator to enharmonically eqauivalent values by being increasing by periodSteps until greater than gamut
                     
-            System.out.println("currentGeneratorIn*genh="+(currentGeneratorIn*genh));
+
             if(isWhiteKey(currentPianoKeyIn)){
                 pw.println("translate([shift/4,genh*"+currentGeneratorIn+"+overhead,0.75*(blackKeyHeight+metalRoundRadius+sqrt(metalRoundRadius*metalRoundRadius*2)+4)]){");
             }else{
@@ -209,7 +211,7 @@ boolean isKeytop;
             pw.println("}");
 
             pw.println("if(keytops)");
-            pw.println("translate([0,(-0.5*(a+d)),(blackKeyHeight*1.5+desiredGamut-"+currentGeneratorIn+"+40)])");//+10 FOR VISIBILITY ONLY
+            pw.println("translate([-0.25*(b+c),(-0.25*(a+d)),(blackKeyHeight*1.5+desiredGamut-"+currentGeneratorIn+"+40)])");//+10 FOR VISIBILITY ONLY
             pw.println("keytop();");
 
             pw.println("}");
@@ -269,13 +271,14 @@ boolean isKeytop;
                 pwValues.println("];");//faces for polygon in counter clockwise points looking from the inside of the key
                 pwValues.println("");
                 
+                //System.out.println("\n \n \n \n \n HERE IS A+D");
+                
           
     }
     
     public void createMainBase(int currentGenerator, int keytopsNeeded, int i, int currentPianoKey){
          double length;//length of main base
                 length = genh*(currentGenerator+(keytopsNeeded-1)*periodSteps)+overhead+stalkScale*(a+d);//-genh*currentGenerator%periodSteps;
-                System.out.println("length:"+length);
                 pw.println("length="+length+";");
                 pw.println("difference(){"
                         + "\nunion(){");
@@ -298,7 +301,7 @@ boolean isKeytop;
                 
                 pw.println("translate([0,metalRoundRadius*2+4,0])");
                 
-                if(isWhiteKey(currentPianoKey)){//main base section, white key is 2x as tall to end up beside black key
+                if(isWhiteKey(currentPianoKey)){//main section, white key is taller
                     pw.println("cube([underKeyWidth,length-(metalRoundRadius*2+4),blackKeyHeight+metalRoundRadius+sqrt(metalRoundRadius*metalRoundRadius*2)+4],false);");
                 }
                 else{
@@ -420,48 +423,17 @@ boolean isKeytop;
          determineGensForAdjacentIntervals();//find out what generator values get you to 1 step in the tuning
          System.out.println("genForStep1&2:  "+genForStep1 +" " +genForStep2);
          
-         z=genh*genForStep1*genForStep2;//height of big triangle made by some number of each adjacent interval, so happens that gFS2 is also number of step1's and vice versa????
-         
-         keyTopSide1= (Math.pow((Math.pow(z,2)+Math.pow(genForStep2/periodSteps*periodWidth,2))/Math.pow(genForStep2,2),0.5));//lenght of sides of key BEFORE HEXAGONIZATION, genForStep2 is actually number of steps to the other generator in the tuning
-         keyTopSide2= (Math.pow((Math.pow(z,2)+Math.pow(genForStep1/periodSteps*periodWidth,2))/Math.pow(genForStep1,2),0.5));
-         System.out.println("keyTopSide1&2:  "+keyTopSide1 + " " +keyTopSide2);
-         
-         theta=Math.atan(z/((double)genForStep2/(double)periodSteps*periodWidth));//useful angles for finding out a,b,c,d, genForStep2 is stepsToX
-         q    =Math.atan(z/((double)genForStep1/(double)periodSteps*periodWidth));
+         d=genForStep2*genh-0.5;
+         b=1.0/(periodSteps)*periodWidth-1;
+         c=(b);
+         a=genForStep1*genh-0.5;
          
          
-         System.out.println("theta:"+(theta*180/Math.PI));
-         System.out.println("q:"+(q*180/Math.PI));
-         
-         System.out.println("z:"+z);
-         
-         System.out.println((z/((double)genForStep2/periodSteps*periodWidth)));
-         System.out.println((z/((double)genForStep1/periodSteps*periodWidth)));
-         System.out.println(periodWidth);
-         System.out.println(octaveWidth);
-         
-         d=(Math.cos(0.5*Math.PI-q)*keyTopSide2);//Switched a and d because I'm building the keyboard "left to right"
-         b=(Math.sin(0.5*Math.PI-q)*keyTopSide2)*0.95;
-         c=(b);//b used to be = Math.sin(0.5*Math.PI-theta)*keyTopSide1;
-         a=(d*genForStep1/genForStep2);//was Math.cos(0.5*Math.PI-theta)*keyTopSide1;
-         //needed to only use one side (keyTopSide2) in derivation either because i made an assumption and can't use both derivations, or maybe a mistake with one side
-         
-         
-         //Great for later but shit I need to change the keytop hole size not the stalk size xO
-         //stalkScaleX=((b+c)*holeScale-1.5)/(b+c);
-         //stalkScaleY=((a+d)*holeScale-1.5)/(a+d);
          holeScaleX=((b+c)*stalkScale+1.25)/(b+c);
          holeScaleY=((a+d)*stalkScale+1.25)/(a+d);
                  
          System.out.println("a:"+a+" b:"+b+" c:"+c+" d:"+d);//Maybe assumming something is bigger than something else like... dunno
-         
-         System.out.println(genForStep1);
-         System.out.println(genForStep2);
-         System.out.println( (double)genForStep1/(double)genForStep2);
-         System.out.println((double)genForStep2/(double)genForStep1);
-         System.out.println((double)a/(double)d);
-         System.out.println((double)d/(double)a);//Should the ratio between a and d be the same as the ratio between gFS1 and gFS2???:??????
-         //should b and c be equal?
+
          
          overhead=metalRoundRadius*2+4+(a+d)*stalkScale*0.5;
          
@@ -477,13 +449,8 @@ boolean isKeytop;
             
             while(currentStepsAboveTonic>periodSteps-1){currentStepsAboveTonic-=periodSteps;}
             
-            System.out.println("determineGensForAdjacentIntervals, generatorCounter:"+generatorCounter+" currentStepsAboveTonic:"+currentStepsAboveTonic +"" +"");
-            
-            
-            if(currentStepsAboveTonic==1){foundGen=true; genForStep1=generatorCounter; genForStep2=periodSteps-generatorCounter; System.out.println("FOUND GEN !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!");}
+            if(currentStepsAboveTonic==1){foundGen=true; genForStep1=generatorCounter; genForStep2=periodSteps-generatorCounter;}
             if(generatorCounter>periodSteps){System.out.println("I DON'T THINK THAT THOSE TWO NUMBERS ARE COPRIME!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!");}
-            
-            
             
             currentStepsAboveTonic+=generatorSteps;
             generatorCounter++;
@@ -504,6 +471,31 @@ boolean isKeytop;
 
 
 /*
+         d=(Math.cos(0.5*Math.PI-q)*keyTopSide2);//Switched a and d because I'm building the keyboard "left to right"
+         b=(Math.sin(0.5*Math.PI-q)*keyTopSide2);
+         c=(b);//b used to be = Math.sin(0.5*Math.PI-theta)*keyTopSide1;
+         a=(d*genForStep1/genForStep2);//was Math.cos(0.5*Math.PI-theta)*keyTopSide1;
+ //z=genh*genForStep1*genForStep2;//height of big triangle made by some number of each adjacent interval, so happens that gFS2 is also number of step1's and vice versa????
+         
+         //keyTopSide1= (Math.pow((Math.pow(z,2)+Math.pow(genForStep2/periodSteps*periodWidth,2))/Math.pow(genForStep2,2),0.5));//lenght of sides of key BEFORE HEXAGONIZATION, genForStep2 is actually number of steps to the other generator in the tuning
+        // keyTopSide2= (Math.pow((Math.pow(z,2)+Math.pow(genForStep1/periodSteps*periodWidth,2))/Math.pow(genForStep1,2),0.5));
+         //System.out.println("keyTopSide1&2:  "+keyTopSide1 + " " +keyTopSide2);
+         
+        // theta=Math.atan(z/((double)genForStep2/(double)periodSteps*periodWidth));//useful angles for finding out a,b,c,d, genForStep2 is stepsToX
+        // q    =Math.atan(z/((double)genForStep1/(double)periodSteps*periodWidth));
+         
+         
+         //System.out.println("theta:"+(theta*180/Math.PI));
+        // System.out.println("q:"+(q*180/Math.PI));
+         
+         //System.out.println("z:"+z);
+         
+         //System.out.println((z/((double)genForStep2/periodSteps*periodWidth)));
+        // System.out.println((z/((double)genForStep1/periodSteps*periodWidth)));
+        // System.out.println(periodWidth);
+         //System.out.println(octaveWidth);
+
+
     public void warpWedges(int currentGenerator){
         
         pw.println("translate([-0.01,36,blackKeyHeight+0.01])");
