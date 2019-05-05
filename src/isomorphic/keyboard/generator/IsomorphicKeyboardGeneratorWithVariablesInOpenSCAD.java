@@ -57,7 +57,7 @@ boolean isKeytop;
                 
                 togetherPrint.println("])");
                 //togetherPrint.println("rotate([0,90,0])");
-                togetherPrint.println(i+"_"+currentGenerator+"(true/*because it's wrong for now*/);");
+                togetherPrint.println(i+"_"+currentGenerator+"(true);");
                 
                 pw.println("use<keytop.scad>");
                 pw.println("include<values.scad>");
@@ -96,10 +96,10 @@ boolean isKeytop;
                         + "[underKeyWidth/3,length+0.1,blackKeyHeight+"+metalRoundRadius+"+8+1],"
                         + "[0,length+0.1,blackKeyHeight+"+metalRoundRadius+"+8+1],"
                                 
-                        + "[0-underKeyWidth/3-underKeyWidth/3,10,blackKeyHeight+"+metalRoundRadius+"+8+1+2*blackKeyHeight+(desiredGamut-"+currentGenerator+")],"
-                        + "[0-underKeyWidth/3,10,blackKeyHeight+"+metalRoundRadius+"+8+1+2*blackKeyHeight+(desiredGamut-"+currentGenerator+")],"
-                        + "[underKeyWidth/3-underKeyWidth/3,length+0.1,blackKeyHeight+"+metalRoundRadius+"+8+1+2*blackKeyHeight+(desiredGamut-"+currentGenerator+")],"
-                        + "[0-underKeyWidth/3,length+0.1,blackKeyHeight+"+metalRoundRadius+"+8+1+2*blackKeyHeight+(desiredGamut-"+currentGenerator+")]"
+                        + "[0-underKeyWidth/3-underKeyWidth/3,10,blackKeyHeight+"+metalRoundRadius+"+8+1+20+20-("+((double)(currentGenerator+periodSteps)/(double)desiredGamut)*20+")],"
+                        + "[0-underKeyWidth/3,10,blackKeyHeight+"+metalRoundRadius+"+8+1+20+20-("+((double)(currentGenerator+periodSteps)/(double)desiredGamut)*20+")],"
+                        + "[underKeyWidth/3-underKeyWidth/3,length+0.1,blackKeyHeight+"+metalRoundRadius+"+8+1+20+20-("+((double)(currentGenerator+periodSteps)/(double)desiredGamut)*20+")],"
+                        + "[0-underKeyWidth/3,length+0.1,blackKeyHeight+"+metalRoundRadius+"+8+1+20+20-("+((double)(currentGenerator+periodSteps)/(double)desiredGamut)*20+")]"
                          
                         + "];");
                 
@@ -112,7 +112,7 @@ boolean isKeytop;
                         + "[7,6,5,4]"
                         + "];");
                 
-                pw.println("translate([0,0,-0.001])polyhedron(anglePoints,angleFaces);");
+                pw.println("translate([0,0,-0.001])#polyhedron(anglePoints,angleFaces);");
                 
                 pw.println("translate([underKeyWidth,0,-0.001])mirror([1,0,0])polyhedron(anglePoints,angleFaces);");
                 
@@ -199,9 +199,9 @@ boolean isKeytop;
                 pw.println("translate([shift/4,genh*"+currentGeneratorIn+"+overhead,blackKeyHeight+0.75*(metalRoundRadius+sqrt(metalRoundRadius*metalRoundRadius*2)+4)]){");
             }
             if(isWhiteKey(currentPianoKeyIn)){
-                pw.println("linear_extrude(height=(2*blackKeyHeight+(desiredGamut-"+currentGeneratorIn+")+0.25*(blackKeyHeight+metalRoundRadius+sqrt(metalRoundRadius*metalRoundRadius*2)+4))){");
+                pw.println("linear_extrude(height=(20+20-("+((double)currentGeneratorIn/(double)desiredGamut)*20+")+0.25*(blackKeyHeight+metalRoundRadius+sqrt(metalRoundRadius*metalRoundRadius*2)+4))){");
             }else{
-                pw.println("linear_extrude(height=(2*blackKeyHeight+(desiredGamut-"+currentGeneratorIn+")+0.25*(metalRoundRadius+sqrt(metalRoundRadius*metalRoundRadius*2)+4))){");
+                pw.println("linear_extrude(height=(20+20-("+((double)currentGeneratorIn/(double)desiredGamut)*20+")+0.25*(metalRoundRadius+sqrt(metalRoundRadius*metalRoundRadius*2)+4))){");
             }
 
             pw.println("scale(stalkScale,stalkScale)");
@@ -211,7 +211,7 @@ boolean isKeytop;
             pw.println("}");
 
             pw.println("if(keytops)");
-            pw.println("translate([-0.25*(b+c),(-0.25*(a+d)),(blackKeyHeight*1.5+desiredGamut-"+currentGeneratorIn+"+40)])");//+10 FOR VISIBILITY ONLY
+            pw.println("translate([-0.25*(b+c),(-0.25*(a+d)),30+20-"+((double)currentGeneratorIn/(double)desiredGamut)*20+"])");//+10 FOR VISIBILITY ONLY
             pw.println("keytop();");
 
             pw.println("}");
@@ -251,12 +251,12 @@ boolean isKeytop;
                 pwValues.println("[(c+shift),(a+d),0],//4");
                 pwValues.println("[(c-shift),(a+d),0],//5");
 
-                pwValues.println("[shift,a,blackKeyHeight],//6");
-                pwValues.println("[(b-shift),0,blackKeyHeight],//7");
-                pwValues.println("[(b+shift),0,blackKeyHeight],//8");
-                pwValues.println("[(b+c-shift),d,blackKeyHeight],//9");
-                pwValues.println("[(c+shift),(a+d),blackKeyHeight],//10");
-                pwValues.println("[(c-shift),(a+d),blackKeyHeight],//11");//each point of polygon (for keytop) in terms of triangle bullshit, offset by shift to make hexagons instead of parallelograms
+                pwValues.println("[shift,a,10],//6");
+                pwValues.println("[(b-shift),0,10],//7");
+                pwValues.println("[(b+shift),0,10],//8");
+                pwValues.println("[(b+c-shift),d,10],//9");
+                pwValues.println("[(c+shift),(a+d),10],//10");
+                pwValues.println("[(c-shift),(a+d),10],//11");//each point of polygon (for keytop) in terms of triangle bullshit, offset by shift to make hexagons instead of parallelograms
                 pwValues.println("];");
 
                 pwValues.println("Faces = [");
@@ -383,37 +383,37 @@ boolean isKeytop;
     public void getUserInputAndDeriveConstants(){
         
         System.out.println("Number of tuning steps per period:");
-         periodSteps = 12;//scan.nextInt();
+         periodSteps = 19;//scan.nextInt();
          
          System.out.println("Steps to generator:");
-         generatorSteps = 5;//scan.nextInt();
+         generatorSteps = 8;//scan.nextInt();
          
          System.out.println(checkCoprime(periodSteps,generatorSteps));
          
          System.out.println("Desired Gamut:");
-         desiredGamut = 24;//scan.nextInt();
+         desiredGamut = 2*periodSteps;//scan.nextInt();
          
          System.out.println("Desired Range:");
-         range = 12;//scan.nextInt();
+         range = periodSteps;//scan.nextInt();
          
          System.out.println("Starting Piano Key (0-11, A=0,Bb=1,etc.):");
-         startingKey = 5;//scan.nextInt();
+         startingKey = 0;//scan.nextInt();
          
          System.out.println("Octave Width:");
-         octaveWidth = 165;//scan.nextDouble();
+         octaveWidth = 146;//165;//scan.nextDouble();
          
          System.out.println("Metal Round Radius:");
          metalRoundRadius = 2.5;//scan.nextDouble();
          
          periodWidth = octaveWidth/12*periodSteps;
          
-         underKeyWidth=octaveWidth/12.0-0.4375;//0.5 was pretty good, trying 0.375 TOO BIG TRYING 0.4375//after thinning tips of keys I can widen these up a little bit//-0.15 mm for fit, 0.1 was too little 10/21/2018//0.25mm 25th Jan 2019//0.5 then 0.75//0.75 works, previous octaves need difference to 0.75 greater than .75
+         underKeyWidth=octaveWidth/12.0-0.46875;//0.5 was pretty good, trying 0.375 TOO BIG TRYING 0.4375//after thinning tips of keys I can widen these up a little bit//-0.15 mm for fit, 0.1 was too little 10/21/2018//0.25mm 25th Jan 2019//0.5 then 0.75//0.75 works, previous octaves need difference to 0.75 greater than .75
          
          System.out.println("Key Travel Distance:");
-         blackKeyHeight = 12;//scan.nextDouble();
+         blackKeyHeight = 5;//12;//scan.nextDouble();
          
          System.out.println("White Key Length:");
-         whiteKeyLength = 120;//scan.nextDouble();139
+         whiteKeyLength = 85;//120;//scan.nextDouble();139
          
          genh=whiteKeyLength/desiredGamut;
          
@@ -423,10 +423,10 @@ boolean isKeytop;
          determineGensForAdjacentIntervals();//find out what generator values get you to 1 step in the tuning
          System.out.println("genForStep1&2:  "+genForStep1 +" " +genForStep2);
          
-         d=genForStep2*genh-0.5;
+         a=genForStep1*genh-0.5;
          b=1.0/(periodSteps)*periodWidth-1;
          c=(b);
-         a=genForStep1*genh-0.5;
+         d=genForStep2*genh-0.5;
          
          
          holeScaleX=((b+c)*stalkScale+1.25)/(b+c);
